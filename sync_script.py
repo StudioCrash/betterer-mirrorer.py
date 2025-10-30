@@ -40,8 +40,8 @@ def should_copy(src: Path, dst: Path, time_tolerance: float = 2.0) -> bool:
         if dst.is_symlink():
             return True
 
-        src_stat = src.stat()  # Use lstat to not follow symlinks
-        dst_stat = dst.stat()
+        src_stat = src.lstat()  # Use lstat to not follow symlinks
+        dst_stat = dst.lstat()
 
         # Copy if size differs or modification time differs
         if src_stat.st_size != dst_stat.st_size:
