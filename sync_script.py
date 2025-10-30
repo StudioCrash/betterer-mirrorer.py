@@ -111,7 +111,7 @@ def sync_directories(
     destination: Path,
     verbose: bool = True,
     dry_run: bool = False,
-    exclude_patterns: Set[str] = None,
+    exclude_patterns: Set[str] | None = None,
     time_tolerance: float = 2.0,
 ) -> Tuple[int, int, int, int]:
     """
@@ -360,6 +360,7 @@ Examples:
 
     verbose = args.verbose and not args.quiet
     exclude_patterns = set(args.exclude)
+    dry_run = args.dry_run  # Initialize from args, may be overridden in interactive mode
 
     # Common patterns that users might want to exclude
     COMMON_EXCLUDES = [
@@ -538,20 +539,18 @@ Examples:
             print("=" * 60)
 
     # Perform sync
-    # Use interactive dry_run if in interactive mode, otherwise use args.dry_run
-    effective_dry_run = dry_run if args.source is None or args.destination is None else args.dry_run
     created_dirs, copied_files, deleted_items, failed_copies = sync_directories(
         source,
         destination,
         verbose=verbose,
-        dry_run=effective_dry_run,
+        dry_run=dry_run,
         exclude_patterns=exclude_patterns,
         time_tolerance=args.time_tolerance,
     )
 
     # Print summary
     print(
-        f"\n{'[DRY RUN] ' if effective_dry_run else ''}Sync {'would be' if effective_dry_run else ''} complete!"
+        f"\n{'[DRY RUN] ' if dry_run else ''}Sync {'would be' if dry_run else ''} complete!"
     )
     print(f"  Directories created: {created_dirs}")
     print(f"  Files copied/updated: {copied_files}")
@@ -561,7 +560,7 @@ Examples:
         print(f"  Files that failed to copy: {failed_copies}", file=sys.stderr)
         sys.exit(1)
 
-    if effective_dry_run:
+    if dry_run:
         print("\nNo changes were made. Run without --dry-run to apply changes.")
 
 
