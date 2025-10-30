@@ -361,6 +361,27 @@ Examples:
     verbose = args.verbose and not args.quiet
     exclude_patterns = set(args.exclude)
 
+    # Common patterns that users might want to exclude
+    COMMON_EXCLUDES = [
+        ".DS_Store",           # macOS metadata
+        ".Spotlight-V100",     # macOS Spotlight
+        ".Trashes",            # macOS trash
+        "Thumbs.db",           # Windows thumbnails
+        "desktop.ini",         # Windows folder settings
+        "$RECYCLE.BIN",        # Windows recycle bin
+        ".fseventsd",          # macOS file system events
+        ".TemporaryItems",     # macOS temporary items
+        ".VolumeIcon.icns",    # macOS volume icon
+        "VT100.trash",         # VT100 trash
+        ".git",                # Git repository
+        ".svn",                # SVN repository
+        "__pycache__",         # Python cache
+        ".pyc",                # Python compiled files
+        "node_modules",        # Node.js dependencies
+        ".idea",               # JetBrains IDE
+        ".vscode",             # VS Code settings
+    ]
+
     # Interactive mode if no arguments provided
     if args.source is None or args.destination is None:
         print("=" * 60)
@@ -368,6 +389,7 @@ Examples:
         print("=" * 60)
         print("\nThis will sync the source directory to the destination.")
         print("Files in destination not in source will be DELETED.")
+        print("Do NOT change any files in the source or destination during the sync.")
         print()
 
         # Get source directory
@@ -421,6 +443,66 @@ Examples:
 
             break
 
+        # Ask about exclusions
+        print("\n" + "=" * 60)
+        print("File Exclusions")
+        print("=" * 60)
+        exclude_input = input("\nWould you like to exclude common system/cache files? (yes/no): ").strip().lower()
+        
+        if exclude_input in ["yes", "y"]:
+            print("\nCommon exclusion patterns:")
+            for i, pattern in enumerate(COMMON_EXCLUDES, 1):
+                print(f"  {i:2d}. {pattern}")
+            
+            print("\nOptions:")
+            print("  - Press Enter to exclude ALL patterns above")
+            print("  - Enter pattern numbers (e.g., '1,3,5' or '1 3 5') for specific exclusions")
+            print("  - Enter 'none' to skip exclusions")
+            print("  - Enter 'custom' to add your own patterns")
+            
+            exclusion_choice = input("\nYour choice: ").strip().lower()
+            
+            if exclusion_choice == "":
+                # Exclude all common patterns
+                exclude_patterns.update(COMMON_EXCLUDES)
+                print(f"Excluding all {len(COMMON_EXCLUDES)} common patterns.")
+            elif exclusion_choice == "none":
+                print("No exclusions selected.")
+            elif exclusion_choice == "custom":
+                print("\nEnter custom patterns to exclude (one per line, empty line to finish):")
+                while True:
+                    custom_pattern = input("  Pattern: ").strip()
+                    if not custom_pattern:
+                        break
+                    exclude_patterns.add(custom_pattern)
+                    print(f"  Added: {custom_pattern}")
+            else:
+                # Parse pattern numbers
+                try:
+                    # Handle both comma and space separation
+                    numbers = exclusion_choice.replace(',', ' ').split()
+                    for num in numbers:
+                        idx = int(num) - 1
+                        if 0 <= idx < len(COMMON_EXCLUDES):
+                            exclude_patterns.add(COMMON_EXCLUDES[idx])
+                        else:
+                            print(f"Warning: Invalid number {num}, skipping.", file=sys.stderr)
+                    print(f"Excluding {len(exclude_patterns)} pattern(s).")
+                except ValueError:
+                    print("Invalid input, no exclusions added.", file=sys.stderr)
+        
+        # Ask if user wants to add custom patterns
+        if exclude_input not in ["yes", "y"]:
+            custom_input = input("\nWould you like to add custom exclusion patterns? (yes/no): ").strip().lower()
+            if custom_input in ["yes", "y"]:
+                print("\nEnter custom patterns to exclude (one per line, empty line to finish):")
+                while True:
+                    custom_pattern = input("  Pattern: ").strip()
+                    if not custom_pattern:
+                        break
+                    exclude_patterns.add(custom_pattern)
+                    print(f"  Added: {custom_pattern}")
+
         # Show summary and confirm
         print("\n" + "=" * 60)
         print(f"Source:      {source}")
@@ -428,11 +510,17 @@ Examples:
         print("=" * 60)
         print("\nWARNING: This will DELETE files in destination not in source!")
 
-        confirm = input("\nProceed with sync? (yes/no): ").strip().lower()
+        # Ask about dry-run
+        dry_run_input = input("\nRun in dry-run mode (preview changes without applying)? (yes/no): ").strip().lower()
+        dry_run = dry_run_input in ["yes", "y"]
 
-        if confirm not in ["yes", "y"]:
-            print("Sync cancelled.")
-            sys.exit(0)
+        if dry_run:
+            print("\n[DRY RUN MODE - No changes will be made]")
+        else:
+            confirm = input("\nProceed with sync? (yes/no): ").strip().lower()
+            if confirm not in ["yes", "y"]:
+                print("Sync cancelled.")
+                sys.exit(0)
     else:
         source = Path(args.source).expanduser().resolve()
         destination = Path(args.destination).expanduser().resolve()
@@ -450,18 +538,20 @@ Examples:
             print("=" * 60)
 
     # Perform sync
+    # Use interactive dry_run if in interactive mode, otherwise use args.dry_run
+    effective_dry_run = dry_run if args.source is None or args.destination is None else args.dry_run
     created_dirs, copied_files, deleted_items, failed_copies = sync_directories(
         source,
         destination,
         verbose=verbose,
-        dry_run=args.dry_run,
+        dry_run=effective_dry_run,
         exclude_patterns=exclude_patterns,
         time_tolerance=args.time_tolerance,
     )
 
     # Print summary
     print(
-        f"\n{'[DRY RUN] ' if args.dry_run else ''}Sync {'would be' if args.dry_run else ''} complete!"
+        f"\n{'[DRY RUN] ' if effective_dry_run else ''}Sync {'would be' if effective_dry_run else ''} complete!"
     )
     print(f"  Directories created: {created_dirs}")
     print(f"  Files copied/updated: {copied_files}")
@@ -471,7 +561,7 @@ Examples:
         print(f"  Files that failed to copy: {failed_copies}", file=sys.stderr)
         sys.exit(1)
 
-    if args.dry_run:
+    if effective_dry_run:
         print("\nNo changes were made. Run without --dry-run to apply changes.")
 
 
