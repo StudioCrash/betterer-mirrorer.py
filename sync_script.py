@@ -117,7 +117,19 @@ def sync_directories(
     """
     Sync source directory to destination, deleting files not in source.
 
-    Returns: (created_dirs, copied_files, deleted_items, failed_copies)
+    Args:
+        source (Path): Source directory path
+        destination (Path): Destination directory path
+        verbose (bool): Enable verbose output
+        dry_run (bool): Show changes without making them
+        exclude_patterns (Set[str]): Patterns to exclude
+        time_tolerance (float): Time difference tolerance in seconds
+
+    Returns: 
+        Tuple[int, int, int, int]: (created_dirs, copied_files, deleted_items, failed_copies)
+    
+    Raises:
+        SystemExit: If source/destination are invalid or overlap
     """
 
     if not source.exists():
