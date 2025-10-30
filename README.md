@@ -1,4 +1,4 @@
-# betterer-mirrorer.py
+# mirrorer.py
 This is an rsync style python script to mirror the contents of one directory to another, while ignoring DS_Store, spotlight, and trash.
 
 It will prompt user for source and destination in interactive mode, but if supplied arguments, the first argument will be interpreted as the source after a space the second argument will be interpreted as the destination.
