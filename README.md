@@ -9,6 +9,8 @@ It accepts command-line options like:
     3. --excludee
     4. --dry-run
 
+If command line arguments are left out, it will use an interactive mode, which prompts the user for the options.
+
 On it's own it doesn't log it's actions, but you can append the following to make it do so:
 | tee "logs/sync_script_log_$(date +%Y-%m-%d_%H-%M-%S).log"
 
